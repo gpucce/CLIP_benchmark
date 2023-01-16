@@ -4,6 +4,7 @@ from open_clip import tokenize
 from tqdm.auto import tqdm
 from open_clip.tokenizer import _tokenizer
 import torch
+from contextlib import suppress
 
 def evaluate(model, dataloader, batch_size, device, transform, train_dataloader=None, num_workers=None, amp=True, verbose=False):
     coco = dataloader.dataset.coco
