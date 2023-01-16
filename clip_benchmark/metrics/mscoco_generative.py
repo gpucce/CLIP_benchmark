@@ -3,15 +3,19 @@ from pycocoevalcap.eval import COCOEvalCap
 from open_clip import tokenize
 from tqdm.auto import tqdm
 from open_clip.tokenizer import _tokenizer
+import torch
+from contextlib import suppress
 
 def evaluate(model, dataloader, batch_size, device, transform, train_dataloader=None, num_workers=None, amp=True, verbose=False):
     coco = dataloader.dataset.coco
     indexer = dataloader.dataset.ids
+    autocast = torch.cuda.amp.autocast if amp else suppress
     results = []
     for idx, (img, _) in enumerate(tqdm(dataloader)):
         n_samples = img.shape[0] # for last batch
         idxs = [indexer[idx * batch_size + id] for id in range(n_samples)]
-        out = model.generate_beamsearch(img.to(device), 20, num_beams=6, num_beam_groups=3, sot_token_id=49406, eos_token_id=49407)
+        with torch.no_grad(), autocast():
+            out = model.generate_beamsearch(img.to(device), 20, num_beams=6, num_beam_groups=3, sot_token_id=49406, eos_token_id=49407)
         decoded = [_tokenizer.decode(i).split("<end_of_text>")[0].replace("<start_of_text>", "").strip() for i in out.cpu().numpy()]
         for image_id, caption in zip(idxs, decoded):
             results.append({"image_id":image_id, "caption":caption})
